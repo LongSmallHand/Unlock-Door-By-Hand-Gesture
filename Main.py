@@ -4,6 +4,7 @@ import numpy as np
 import time
 import os
 import HandTrackingModule as htm
+import Scan
 
 #Size
 brush = 15
@@ -103,7 +104,8 @@ while True:
                     pw_r = "password_record.png"
                     img_r = "image_record.png"
                     cv2.imwrite(pw_r, imgInv)
-                    cv2.imwrite(img_r, img)
+                    # cv2.imwrite(img_r, img)
+                    Scan.pwd_scan(pw_r)
                     break
                     #Export passwork screen to file png
 
