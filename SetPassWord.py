@@ -1,11 +1,11 @@
 from typing import overload
 import cv2
 import numpy as np
+import pytesseract
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 import os
 import HandTrackingModule as htm
 from playsound import playsound
-import pytesseract
-from datetime import datetime
 import colorama
 from colorama import Fore, Back, Style
 colorama.init(autoreset=True)
@@ -29,15 +29,12 @@ overlayList = []
 for imPath in myList:
     image = cv2.imread(f'{folderPath}/{imPath}')
     overlayList.append(image)
-#print(len(overlayList))
 
 #Setting background
 header = overlayList[0]
 
 cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-#Width = 1280
 cap.set(3, 1280)
-#Height = 720 
 cap.set(4, 720)
 
 detector = htm.handDetector(detectionCon = 0.85)
@@ -51,7 +48,6 @@ while True:
     success, img = cap.read()
     #Flip camera 
     img = cv2.flip(img, 1)
-    cv2.imwrite('Fail/human.png', img)
     #Draw landmarks
     img = detector.findHands(img)
     lmList = detector.findPos(img, draw=False)
@@ -64,17 +60,13 @@ while True:
     img = cv2.bitwise_or(img, imgCanvas)
 
     if len(lmList)!=0:
-        #print(lmList)
 
         #Index finger
         x1, y1 = lmList[8][1:]
         #Middle finger
         x2, y2 = lmList[12][1:]
 
-        #Checking finger (Up/Down)
         finger = detector.fingerUP()
-        #print(finger)
-
         #Drawing Mode
         if finger[1]==True and finger[2]==False:
             cv2.circle(img, (x1,y1), 15, drawColor, cv2.FILLED)
@@ -112,9 +104,10 @@ while True:
                     
                 elif 927 < x1 < 1042: 
                     header = overlayList[0]
-                    pw_r = 'Image/password_record.png'
-                    img_r = 'Fail/fail_record.png'
-                    cv2.imwrite(pw_r, imgInv)
+                    pw_r = 'Image/setpw_record.png'
+                    img_r = 'Image/set_record.png'
+                    test_r = 'record.png'
+                    cv2.imwrite(test_r, imgInv)
                     break
                     #Export passwork screen to file png
             
@@ -128,36 +121,38 @@ while True:
     if key == ord('s'):
         break
 cv2.destroyAllWindows()
-#print(image_text)
-from read_img import image_text
-with open("PassLog/setpw.txt", 'r' , encoding='utf-8') as f:
-    setpw = f.read(4)
-with open("PassLog/enterpw.txt", 'w' , encoding='utf-8') as f:
-    f.write(image_text[:4])
-with open("PassLog/enterpw.txt", 'r' , encoding='utf-8') as f:
-    enterpw = f.read(4)
 
-#print(enterpw)
+Path = ""
+myImage = os.listdir()
+core = "record.png"
 
-# Print the time and the access history of the door  
-now = datetime.now()
-dt = now.strftime("%d/%m/%Y %H:%M:%S")
-from Bot_Telegram import bot_message, bot_photo
-if setpw == enterpw:
-    print(GREEN + "Welcome home, sir! (^.^)")
-    playsound(f'Audio/success.mp3')
-    with open("PassLog/Log.txt", 'w+' , encoding='utf-8') as f:
-        #f.seek(0,0)
-        #f.writelines(enterpw + '\n')
-        f.writelines(dt + " - The door is opened!" + '\n' + '\n')
-    os.remove('Image/password_record.png')
+if core in myImage:
+    imagepw = cv2.imread('record.png', cv2.IMREAD_UNCHANGED)
 else:
-    print(RED + "Wrong password, please try again!")
-    playsound(f'Audio/fail.mp3')
-    cv2.imwrite('Fail/fail_record.png', img)
-    with open("PassLog/Log.txt", 'w+' , encoding='utf-8') as f:
-        #f.write(enterpw + '\n')
-        f.writelines(dt + " - Access denied!" + '\n' + '\n') 
-    bot_photo()
-bot_message()
-keys = cv2.waitKey(1)
+    imagepw = cv2.imread('empty_pw/blank.png', cv2.IMREAD_UNCHANGED)
+
+custom_config = r'-c tessedit_char_whitelist=ABCDEFGH123456789 --psm 7 --oem 3'
+imagepw_text = pytesseract.image_to_string(imagepw, lang='eng', config=custom_config)
+spw = imagepw_text[:4]
+#print(spw)
+#print(chars_ps)
+
+#convert string to list
+char = "ABCDEFGH12345679"
+chars = list(char)
+chars_ps = list(spw)
+#print(spw)
+# check if all ele in spw are in char
+check = all(item in chars for item in chars_ps)
+
+if check is True:
+    with open("PassLog/setpw.txt", 'w' , encoding='utf-8') as f:
+        f.write(spw)
+    cv2.imwrite('Image/setpw_record.png', imgInv)
+    cv2.imwrite('Image/set_record.png', img)
+    print(GREEN + ("Creat password successfully. The password is: " + spw))
+    playsound(f'Audio/voice.mp3')
+    os.remove('record.png')
+else:
+    print(RED + "Can not recognize the password, please try again!")
+    playsound(f'Audio/voice_fail.mp3')
